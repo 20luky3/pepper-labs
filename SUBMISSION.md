@@ -14,7 +14,7 @@ Check off what you finished:
 - [x] Task 2 — Update Variant
 - [x] Task 3 — Fix soft-delete bug
 - [x] Task 4 — Loading & error states
-- [ ] Task 5 — Input validation
+- [ ] Task 5 — Input validation (partially complete)
 
 ---
 
@@ -52,6 +52,12 @@ Each execution of the effect creates a local `cancelled` flag, where React's eff
 
 ### Task 5
 
+I partially completed this task as I was implementing task 1 and task 2. I implemented the validation rules for the create product and edit variant routes on both the client and server. At this point, product creation requires a non-empty name and at least one variant. Each variant requires a name and SKU, duplicate SKUs within the same request are rejected, and price/inventory count must be non-negative integers.
+
+For variant updates, price and inventory count are optional since it's a partial update, but they are validated if provided. The frontend applies the same main constraints before submitting, and will display errors that are returned by the API.
+
+The implemented validation satisfies the provided automated cases, but I consider the task only partially complete as I have not thoroughly tested the input validations in both the frontend and backend, or cover other kinds of malformed input types.
+
 ---
 
 ## What I'd improve with more time
@@ -59,6 +65,10 @@ Each execution of the effect creates a local `cancelled` flag, where React's eff
 _What would you add, refactor, or fix if you had another couple of hours?_
 
 Improve backend request validation by extracting it from the route handlers into reusable functions that return normalised input. Additional checks could handle problems like malformed request bodies, invalid route IDs, and unsupported category/status values in the product creation page.
+
+Implement the ability to edit product details and status. The frontend for editing products does not exist anywhere, although the backend route already is written. It would require a dialog box similar to editing variants and wire it up to the backend.
+
+Also, I'd work on the bonus tasks. For the delete button, I would add a state in the frontend which disables the ability to click the button after it's been clicked once. For the inconsistent error responses, I would add error-handling middleware so that every endpoint returns the same JSON error format instead of some returning plain text.
 
 ---
 
