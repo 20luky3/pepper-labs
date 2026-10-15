@@ -1,14 +1,18 @@
+/** Displays a product and coordinates product-level and variant-level actions. */
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { ArrowLeft, Pencil, Trash2, Package } from "lucide-react";
+import EditVariantDialog from "@/components/EditVariantDialog";
 import { fetchProduct, deleteProduct } from "@/lib/api";
 import type { ProductDetail, Variant } from "@/types";
 import { formatPrice, cn } from "@/lib/utils";
 
+/** Renders a product and keeps its variant list synchronized after edits. */
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [product, setProduct] = useState<ProductDetail | null>(null);
+  const [editingVariant, setEditingVariant] = useState<Variant | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -27,6 +31,21 @@ export default function ProductDetailPage() {
       return;
     await deleteProduct(Number(id));
     navigate("/products");
+  };
+
+  /** Replaces the edited row without requiring another product request. */
+  const handleVariantUpdated = (updatedVariant: Variant) => {
+    setProduct((current) =>
+      current
+        ? {
+            ...current,
+            variants: current.variants.map((variant) =>
+              variant.id === updatedVariant.id ? updatedVariant : variant,
+            ),
+          }
+        : current,
+    );
+    setEditingVariant(null);
   };
 
   if (!product) {
@@ -68,7 +87,7 @@ export default function ProductDetailPage() {
                     ? "border-emerald-200 bg-emerald-50 text-emerald-700"
                     : product.status === "draft"
                       ? "border-amber-200 bg-amber-50 text-amber-700"
-                      : "border-gray-200 bg-gray-100 text-gray-600"
+                      : "border-gray-200 bg-gray-100 text-gray-600",
                 )}
               >
                 {product.status}
@@ -120,30 +139,46 @@ export default function ProductDetailPage() {
                 </tr>
               </thead>
               <tbody className="[&_tr:last-child]:border-0">
-                {product.variants.map((v) => (
-                  <VariantRow key={v.id} variant={v} />
+                {product.variants.map((variant) => (
+                  <VariantRow
+                    key={variant.id}
+                    variant={variant}
+                    onEdit={() => setEditingVariant(variant)}
+                  />
                 ))}
               </tbody>
             </table>
           </div>
         </div>
       </section>
+
+      {editingVariant && (
+        <EditVariantDialog
+          key={editingVariant.id}
+          variant={editingVariant}
+          onClose={() => setEditingVariant(null)}
+          onUpdated={handleVariantUpdated}
+        />
+      )}
     </div>
   );
 }
 
-/* ------------------------------------------------------------------ */
-
-function VariantRow({ variant }: { variant: Variant }) {
+/** Renders one variant and exposes its edit action to the page. */
+function VariantRow({
+  variant,
+  onEdit,
+}: {
+  variant: Variant;
+  onEdit: () => void;
+}) {
   const lowStock =
     variant.inventory_count > 0 && variant.inventory_count <= 10;
   const outOfStock = variant.inventory_count === 0;
 
   return (
     <tr className="border-b transition-colors hover:bg-muted/50">
-      <td className="p-4 align-middle font-mono text-xs">
-        {variant.sku}
-      </td>
+      <td className="p-4 align-middle font-mono text-xs">{variant.sku}</td>
       <td className="p-4 align-middle font-medium">{variant.name}</td>
       <td className="p-4 text-right align-middle tabular-nums">
         {formatPrice(variant.price_cents)}
@@ -152,7 +187,7 @@ function VariantRow({ variant }: { variant: Variant }) {
         <span
           className={cn(
             outOfStock && "text-destructive",
-            lowStock && "text-amber-600"
+            lowStock && "text-amber-600",
           )}
         >
           {variant.inventory_count}
@@ -163,11 +198,9 @@ function VariantRow({ variant }: { variant: Variant }) {
       </td>
       <td className="p-4 text-right align-middle">
         <button
+          type="button"
           className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          onClick={() => {
-            // TODO: Open variant edit form / dialog
-            alert("Variant editing is not yet implemented.");
-          }}
+          onClick={onEdit}
         >
           <Pencil className="h-3 w-3" />
           Edit

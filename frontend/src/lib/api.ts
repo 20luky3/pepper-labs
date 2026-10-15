@@ -1,5 +1,5 @@
 /** Defines HTTP operations at the catalog API boundary. */
-import type { CreateProductInput } from "@/types";
+import type { CreateProductInput, UpdateVariantInput } from "@/types";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
@@ -49,7 +49,7 @@ export async function fetchCategories(): Promise<Response> {
 
 export async function updateVariant(
   id: number,
-  body: unknown
+  body: UpdateVariantInput,
 ): Promise<Response> {
   return fetch(`${API_URL}/api/variants/${id}`, {
     method: "PUT",

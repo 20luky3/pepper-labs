@@ -15,6 +15,14 @@ export interface CreateProductInput {
   variants: CreateVariantInput[];
 }
 
+/** Fields supported by the partial variant-update API boundary. */
+export interface UpdateVariantInput {
+  name?: string;
+  sku?: string;
+  price_cents?: number;
+  inventory_count?: number;
+}
+
 export interface Product {
   id: number;
   name: string;
