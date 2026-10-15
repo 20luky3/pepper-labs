@@ -10,6 +10,8 @@ export default function ProductsPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [search, setSearch] = useState("");
   const [categoryId, setCategoryId] = useState<number | undefined>();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const hasFilters = Boolean(search || categoryId);
 
@@ -23,10 +25,39 @@ export default function ProductsPage() {
 
   // Fetch products when filters change
   useEffect(() => {
+    let cancelled = false;
+
+    setLoading(true);
+    setError(null);
+
     fetchProducts({ search: search || undefined, category_id: categoryId })
-      .then((r) => r.json())
-      .then(setProducts)
-      .catch(() => {});
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Failed to load products");
+        }
+
+        return response.json();
+      })
+      .then((data) => {
+        if (!cancelled) {
+          setProducts(data);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setError("Unable to load products. Please try again.");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      });
+
+    // Ignore this request if the filters change or the page unmounts.
+    return () => {
+      cancelled = true;
+    };
   }, [search, categoryId]);
 
   const clearFilters = () => {
@@ -94,13 +125,24 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      {/* Result count */}
-      <p className="mb-4 text-sm text-muted-foreground">
-        {products.length} result{products.length !== 1 ? "s" : ""} found
-      </p>
+      {/* Only report a result count after a successful request */}
+      {!loading && !error && (
+        <p className="mb-4 text-sm text-muted-foreground">
+          {products.length} result{products.length !== 1 ? "s" : ""} found
+        </p>
+      )}
 
-      {/* Product grid — 5 columns on xl like original CatalogGrid */}
-      {products.length === 0 ? (
+      {loading ? (
+        <div className="flex flex-col items-center justify-center gap-3 py-20 text-muted-foreground">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          <p className="text-sm">Loading products…</p>
+        </div>
+      ) : error ? (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-8 text-center">
+          <p className="font-medium text-destructive">Could not load products</p>
+          <p className="mt-1 text-sm text-muted-foreground">{error}</p>
+        </div>
+      ) : products.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
           <p className="text-lg font-medium">No products found</p>
           <p className="mt-1 text-sm">Try adjusting your search or filters.</p>

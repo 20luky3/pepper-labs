@@ -13,7 +13,7 @@ Check off what you finished:
 - [x] Task 1 — Create Product
 - [x] Task 2 — Update Variant
 - [x] Task 3 — Fix soft-delete bug
-- [ ] Task 4 — Loading & error states
+- [x] Task 4 — Loading & error states
 - [ ] Task 5 — Input validation
 
 ---
@@ -42,9 +42,13 @@ The dialog box pre-populates the current values and performs client-side validat
 
 ### Task 3
 
-I looked at the backend route that retrieves all products, since it should be the backend's reposibility to filter out soft-deleted products. In the route, I modified the database query to exclude products with a non-null `deleted_at` column by adding it to the initial `conditions` array.
+I looked at the backend route that retrieves all products, since it should be the backend's reponsibility to filter out soft-deleted products. In the route, I modified the database query to exclude products with a non-null `deleted_at` column by adding it to the initial `conditions` array.
 
 ### Task 4
+
+I added a loading and an error state to the products page. The page will display a spinner while products are being fetched and an error message if the request fails. The existing empty state only displays after a successful request returns no products. The result cout is also hidden during loading and error states so that stale or misleading information is not displayed.
+
+Each execution of the effect creates a local `cancelled` flag, where React's effect cleanup sets that flag if the filters change or the page unmounts. A completed request checks the flag before updating state, preventing an older (stale) response from overwriting newer filter results if requests finish out of order.
 
 ### Task 5
 
