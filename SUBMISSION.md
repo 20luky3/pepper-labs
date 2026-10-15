@@ -1,8 +1,8 @@
 # Submission
 
-**Candidate name:** _Your name_
-**Date:** _Date_
-**Time spent:** _Approximate hours_
+**Candidate name:** Yan Luk
+**Date** October 15, 2026
+**Time spent:** 3.5 hours
 
 ---
 
