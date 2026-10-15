@@ -71,7 +71,7 @@ router.get("/:id", (req, res) => {
         `SELECT p.*, c.name AS category_name
          FROM products p
          LEFT JOIN categories c ON p.category_id = c.id
-         WHERE p.id = ?`
+         WHERE p.id = ?`,
       )
       .get(Number(req.params.id)) as Record<string, unknown> | undefined;
 
@@ -81,7 +81,7 @@ router.get("/:id", (req, res) => {
 
     const variants = db
       .prepare(
-        `SELECT * FROM variants WHERE product_id = ? ORDER BY created_at ASC`
+        `SELECT * FROM variants WHERE product_id = ? ORDER BY created_at ASC`,
       )
       .all(Number(req.params.id));
 
@@ -107,16 +107,133 @@ router.get("/:id", (req, res) => {
  *   ]
  * }
  */
-router.post("/", (_req, res) => {
+router.post("/", (req, res) => {
   // TODO: Implement product creation
   // 1. Validate required fields (name is required, variants array must have at least one entry)
+
+  const body = req.body;
+
+  if (typeof body.name !== "string" || body.name.trim() === "") {
+    return res.status(400).json({ error: "Product name is required" });
+  }
+
+  if (!Array.isArray(body.variants) || body.variants.length === 0) {
+    return res
+      .status(400)
+      .json({ error: "At least one product variant is required" });
+  }
+
   // 2. Validate each variant (sku required + unique, price_cents >= 0, inventory_count >= 0)
+  const seenSkus = new Set<String>();
+
+  for (const [index, variant] of body.variants.entries()) {
+    if (typeof variant.sku !== "string" || variant.sku.trim() === "") {
+      return res
+        .status(400)
+        .json({ error: `Variant ${index + 1}: SKU is required` });
+    }
+
+    const sku = variant.sku.trim();
+
+    if (seenSkus.has(sku)) {
+      return res
+        .status(400)
+        .json({ error: `Duplicate SKU in request: ${sku}` });
+    }
+
+    seenSkus.add(sku);
+
+    if (typeof variant.name !== "string" || variant.name.trim() === "") {
+      return res
+        .status(400)
+        .json({ error: `Variant ${index + 1}: name is required` });
+    }
+
+    if (!Number.isSafeInteger(variant.price_cents) || variant.price_cents < 0) {
+      return res.status(400).json({
+        error: `Variant ${index + 1}: price_cents must be a non-negative integer`,
+      });
+    }
+
+    if (
+      !Number.isSafeInteger(variant.inventory_count) ||
+      variant.inventory_count < 0
+    ) {
+      return res.status(400).json({
+        error: `Variant ${index + 1}: inventory_count must be a non-negative integer`,
+      });
+    }
+  }
+
   // 3. Insert product and variants inside a transaction
-  // 4. Return the created product with its variants
-  res.status(501).json({
-    error: "Not implemented",
-    hint: "Implement product creation with validation and a database transaction",
+  const insertProduct = db.prepare(`
+    INSERT INTO products (name, description, category_id, status)
+    VALUES (?, ?, ?, ?)
+  `);
+
+  const insertVariant = db.prepare(`
+    INSERT INTO variants (product_id, sku, name, price_cents, inventory_count)
+    VALUES (?, ?, ?, ?, ?)
+  `);
+
+  const createProduct = db.transaction(() => {
+    const result = insertProduct.run(
+      body.name.trim(),
+      body.description ?? null,
+      body.category_id ?? null,
+      body.status ?? "active",
+    );
+
+    const productId = Number(result.lastInsertRowid);
+
+    for (const variant of body.variants) {
+      insertVariant.run(
+        productId,
+        variant.sku.trim(),
+        variant.name.trim(),
+        variant.price_cents,
+        variant.inventory_count,
+      );
+    }
+
+    return productId;
   });
+
+  try {
+    const productId = createProduct();
+
+    const product = db
+      .prepare(
+        `SELECT p.*, c.name AS category_name
+        FROM products p
+        LEFT JOIN categories c ON p.category_id = c.id
+        WHERE p.id = ?`,
+      )
+      .get(productId) as Record<string, unknown> | undefined;
+
+    const variants = db
+      .prepare(
+        `SELECT *
+        FROM  variants
+        WHERE product_id = ?
+        ORDER BY created_at ASC`,
+      )
+      .all(productId);
+
+    // 4. Return the created product with its variants
+    return res.status(201).json({
+      ...product,
+      variants,
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "";
+
+    if (message.includes("UNIQUE constraint failed: variants.sku")) {
+      return res.status(409).json({ error: "SKU already exists" });
+    }
+
+    return res.status(500).json({ error: "Failed to create product" });
+  }
 });
 
 /**
@@ -143,15 +260,21 @@ router.put("/:id", (req, res) => {
            category_id = COALESCE(?, category_id),
            status = COALESCE(?, status),
            updated_at = datetime('now')
-       WHERE id = ?`
-    ).run(name ?? null, description ?? null, category_id ?? null, status ?? null, id);
+       WHERE id = ?`,
+    ).run(
+      name ?? null,
+      description ?? null,
+      category_id ?? null,
+      status ?? null,
+      id,
+    );
 
     const updated = db
       .prepare(
         `SELECT p.*, c.name AS category_name
          FROM products p
          LEFT JOIN categories c ON p.category_id = c.id
-         WHERE p.id = ?`
+         WHERE p.id = ?`,
       )
       .get(id);
 
@@ -169,9 +292,9 @@ router.put("/:id", (req, res) => {
 router.delete("/:id", (req, res) => {
   const id = Number(req.params.id);
 
-  const product = db
-    .prepare("SELECT * FROM products WHERE id = ?")
-    .get(id) as Record<string, unknown> | undefined;
+  const product = db.prepare("SELECT * FROM products WHERE id = ?").get(id) as
+    | Record<string, unknown>
+    | undefined;
 
   if (!product) {
     // FIXME: Returns plain text — not JSON like other error responses
@@ -179,7 +302,7 @@ router.delete("/:id", (req, res) => {
   }
 
   db.prepare(
-    `UPDATE products SET deleted_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`
+    `UPDATE products SET deleted_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`,
   ).run(id);
 
   res.json({ success: true });

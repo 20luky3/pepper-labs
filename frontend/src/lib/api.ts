@@ -1,3 +1,6 @@
+/** Defines HTTP operations at the catalog API boundary. */
+import type { CreateProductInput } from "@/types";
+
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
 export async function fetchProducts(params?: {
@@ -15,7 +18,9 @@ export async function fetchProduct(id: number): Promise<Response> {
   return fetch(`${API_URL}/api/products/${id}`);
 }
 
-export async function createProduct(body: unknown): Promise<Response> {
+export async function createProduct(
+  body: CreateProductInput,
+): Promise<Response> {
   return fetch(`${API_URL}/api/products`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

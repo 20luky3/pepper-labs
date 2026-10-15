@@ -1,3 +1,20 @@
+/** Payload accepted when creating a product variant. */
+export interface CreateVariantInput {
+  sku: string;
+  name: string;
+  price_cents: number;
+  inventory_count: number;
+}
+
+/** Payload accepted by the create-product API boundary. */
+export interface CreateProductInput {
+  name: string;
+  description: string | null;
+  category_id: number | null;
+  status: "active" | "draft";
+  variants: CreateVariantInput[];
+}
+
 export interface Product {
   id: number;
   name: string;
