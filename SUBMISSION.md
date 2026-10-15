@@ -12,7 +12,7 @@ Check off what you finished:
 
 - [x] Task 1 — Create Product
 - [x] Task 2 — Update Variant
-- [ ] Task 3 — Fix soft-delete bug
+- [x] Task 3 — Fix soft-delete bug
 - [ ] Task 4 — Loading & error states
 - [ ] Task 5 — Input validation
 
@@ -41,6 +41,8 @@ For the frontend, I chose a dialog box rather than directing to a separate page 
 The dialog box pre-populates the current values and performs client-side validation. Although the backend does support updating the SKU and variant name, I kept these values read-only in the dialog box since the task only requires editing price and inventory count of a variant. After a successful update, the product page replaces the updated variant in local state rather than refetching the entire product.
 
 ### Task 3
+
+I looked at the backend route that retrieves all products, since it should be the backend's reposibility to filter out soft-deleted products. In the route, I modified the database query to exclude products with a non-null `deleted_at` column by adding it to the initial `conditions` array.
 
 ### Task 4
 
